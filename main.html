@@ -27,12 +27,9 @@
         h1 {
             color: #ff0000;
         }
-        video {
+        iframe {
             margin-top: 20px;
             border: none;
-            width: 840px;
-            height: 472px;
-            pointer-events: none;
         }
         #popup {
             display: none;
@@ -69,7 +66,7 @@
             text-align: center;
             flex-direction: column;
         }
-        #closeButton {
+        #closeDontLeave {
             margin-top: 20px;
             padding: 10px 30px;
             background-color: #333;
@@ -87,75 +84,86 @@
         <h1>Happy April Fools!</h1>
         <p>For today only, you have to watch this video (all the way through) to use Blobbypass! 😈</p>
 
-        <div id="videoContainer"></div>
+        <iframe id="rickroll" width="840" height="472" 
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&autoplay=1&fs=0&modestbranding=1&iv_load_policy=3&rel=0" 
+            allow="autoplay" allowfullscreen="false">
+        </iframe>
 
         <div id="popup">I see you...</div>
 
         <div id="popup2">
             Bro thought they were smart 🤣<br>
-            <button id="closeButton">Restart the whole video (L bozo)</button>
+            <button id="closeDontLeave">Restart the whole video (L bozo)</button>
         </div>
     </div>
 
     <script>
         document.getElementById('popup2').style.display = 'none';
-        const popup = document.getElementById('popup');
-        const popup2 = document.getElementById('popup2');
-        const videoContainer = document.getElementById('videoContainer');
+        let player;
         let lastTime = 0;
+        let isTabSwitched = false;
         let isTabActive = true;
-        let videoElement;
 
-        function createVideo() {
-            videoElement = document.createElement('video');
-            videoElement.id = 'video';
-            videoElement.autoplay = true;
-            videoElement.controls = true;
-            videoElement.width = 840;
-            videoElement.height = 472;
-            videoElement.disablePictureInPicture = true;
-            videoElement.setAttribute('controlsList', 'nofullscreen nodownload');
-            videoElement.setAttribute('playsinline', '');
-            videoElement.style.pointerEvents = 'auto';
-
-            let source = document.createElement('source');
-            source.src = 'https://blobby-boi.github.io/BlobbypassXSS/rickroll.mp4';
-            source.type = 'video/mp4';
-
-            videoElement.appendChild(source);
-            videoContainer.innerHTML = '';
-            videoContainer.appendChild(videoElement);
-
-            videoElement.addEventListener('ended', onVideoEnded);
-
-            setInterval(checkVideoProgress, 25);
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('rickroll', {
+                events: {
+                    'onStateChange': onPlayerStateChange,
+                    'onReady': onPlayerReady
+                }
+            });
         }
 
-        function checkVideoProgress() {
-            let currentTime = videoElement.currentTime;
-            if ((currentTime > 0.5 && currentTime > lastTime + 0.5 && isTabActive) || videoElement.playbackRate > 1) {
-                showPopup('popup');
-                videoElement.style.opacity = '0';
+        function onPlayerReady(event) {
+            setInterval(() => {
+                let currentTime = player.getCurrentTime();
+                let duration = player.getDuration();
+                let videoData = player.getVideoData();
+
+                if (videoData.title === "" || duration === 0) {
+                    isAdPlaying = true;
+                } else {
+                    isAdPlaying = false;
+                }
+
+                if (!isAdPlaying && currentTime > 0.5 && currentTime > lastTime + 0.06 && !isTabSwitched && isTabActive) { 
+                    showPopup('popup');
+                    player.destroy();
+                    let iframe = document.createElement('iframe');
+                    iframe.id = 'rickroll';
+                    iframe.width = '840';
+                    iframe.height = '472';
+                    iframe.src = 'https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&autoplay=1&fs=0&modestbranding=1&iv_load_policy=3&rel=0';
+                    iframe.allow = 'autoplay';
+                    iframe.allowfullscreen = 'false';
+                    document.querySelector('.content').appendChild(iframe);
+                    onYouTubeIframeAPIReady();
+                }
+                lastTime = currentTime;
+            }, 50);
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED) {
                 setTimeout(() => {
-                    videoElement.remove();
-                    createVideo();
+                    if (player.getPlayerState() === YT.PlayerState.ENDED) {
+                        window.location.href = "https://blobby-boi.github.io/BlobbypassXSS/fool.html";
+                    }
                 }, 1000);
             }
-            lastTime = currentTime;
         }
 
         function showPopup(popupId) {
-            let popupElement = document.getElementById(popupId);
-            popupElement.style.display = 'block';
+            let popup = document.getElementById(popupId);
+            popup.style.display = 'block';
             setTimeout(() => {
-                popupElement.style.opacity = 1;
+                popup.style.opacity = 1;
             }, 10);
 
             if (popupId === 'popup') {
                 setTimeout(() => {
-                    popupElement.style.opacity = 0;
+                    popup.style.opacity = 0;
                     setTimeout(() => {
-                        popupElement.style.display = 'none';
+                        popup.style.display = 'none';
                     }, 500);
                 }, 1500);
             }
@@ -163,30 +171,26 @@
 
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
+                isTabSwitched = true;
                 isTabActive = false;
-                videoElement.pause();
+                player.pauseVideo();
                 showPopup('popup2');
-            } else {
+            } else if (isTabSwitched) {
                 isTabActive = true;
-                popup2.style.display = 'flex';
+                isTabSwitched = false;
+                document.getElementById('popup2').style.display = 'flex';
             }
         });
 
-        document.getElementById('closeButton').addEventListener('click', () => {
-            popup2.style.display = 'none';
-            videoElement.remove();
-            createVideo();
+        document.getElementById('closeDontLeave').addEventListener('click', () => {
+            document.getElementById('popup2').style.display = 'none';
+            player.playVideo();
         });
 
-        function onVideoEnded() {
-            setTimeout(() => {
-                if (videoElement.ended) {
-                    window.location.href = "https://blobby-boi.github.io/BlobbypassXSS/fool.html";
-                }
-            }, 1000);
-        }
-
-        createVideo();
+        let tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        let firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     </script>
 </body>
 </html>
