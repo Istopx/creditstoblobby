@@ -1,1 +1,1 @@
-window.location.href="https://blobby-boi.github.io/BlobbypassXSS/main.html"
+window.location.href="https://istopx.github.io/creditstoblobby/main.html"
